@@ -29,15 +29,15 @@ const CONFIG = {
         RULES: '📜・rules',
         MOD_LOGS: '📋・mod-logs',
         TICKET_CREATE: '🎫・create-ticket',
-        TICKET_LOGS: 'ticket-logs', // ID del canal de logs de tickets
+        TICKET_LOGS: '1502442736517906624', // ID del canal de logs de tickets
         ROLES_SELECT: '🎭・roles'
     },
     ROLES: {
         NEW_MEMBER: '👋 Nuevo Miembro',
-        STAFF_ROLE_ID: '1234567890', // Pon el ID del rol Moderador o Administrador aquí
+        STAFF_ROLE_ID: '1502440224326684672', // Pon el ID del rol Moderador o Administrador aquí
         NOTIFICATIONS: '🔔 Notificaciones'
     },
-    CATEGORY_TICKETS: 'SOPORTE' // Nombre de la categoría donde se abrirán
+    CATEGORY_TICKETS: '🎫 SOPORTE' // Nombre de la categoría donde se abrirán
 };
 
 client.once('ready', () => {

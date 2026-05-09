@@ -12,10 +12,13 @@ client.once('ready', () => {
 });
 
 client.on('guildMemberAdd', async (member) => {
+    // Esto busca el canal que se llame '👋・welcome'
     const channel = member.guild.channels.cache.find(
         c => c.name === '👋・welcome'
     );
+
     if (!channel) return;
+
     channel.send(
         `🌌 ¡Bienvenido a DevVerse Studios, ${member}! 🎮🚀\n\n` +
         `Nos alegra mucho tenerte aquí.\n\n` +

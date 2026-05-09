@@ -21,178 +21,305 @@ const client = new Client({
     partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-// --- CONFIGURACIÓN DE IDs ---
-// Jensi, rellena estos IDs de tu servidor para que todo funcione perfecto
 const CONFIG = {
+    ROLES: {
+        NEW: '👋 Nuevo Miembro',
+        VERIFIED: '✅ Verificado',
+        STAFF: '1502440224326684672'
+    },
     CHANNELS: {
         WELCOME: '👋・welcome',
         RULES: '📜・rules',
-        MOD_LOGS: '📋・mod-logs',
-        TICKET_CREATE: '🎫・create-ticket',
-        TICKET_LOGS: '1502442736517906624', // ID del canal de logs de tickets
-        ROLES_SELECT: '🎭・roles'
+        ROLES: '🎭・roles',
+        GENERAL: '💬・general',
+        LOGS: '📋・mod-logs',
+        REPORTS: '🚨・reports',
+        STATS: '📊・server-stats',
+        TICKETS: '🎫・create-ticket'
     },
-    ROLES: {
-        NEW_MEMBER: '👋 Nuevo Miembro',
-        STAFF_ROLE_ID: '1502440224326684672', // Pon el ID del rol Moderador o Administrador aquí
-        NOTIFICATIONS: '🔔 Notificaciones'
-    },
-    CATEGORY_TICKETS: '🎫 SOPORTE' // Nombre de la categoría donde se abrirán
+    CATEGORY_TICKETS: '🆘 AYUDA'
 };
 
+// READY
 client.once('ready', () => {
-    console.log(`✅ DevVerse Bot encendido y patrullando como ${client.user.tag}`);
+    console.log(`✅ Bot listo como ${client.user.tag}`);
 });
 
-// 1. BIENVENIDA DESARROLLADA Y AUTO-ROLE
+
+// =========================
+// 🎉 BIENVENIDA
+// =========================
 client.on('guildMemberAdd', async (member) => {
-    // Asignar rol inicial
-    const initialRole = member.guild.roles.cache.find(r => r.name === CONFIG.ROLES.NEW_MEMBER);
-    if (initialRole) member.roles.add(initialRole);
+
+    const role = member.guild.roles.cache.find(r => r.name === CONFIG.ROLES.NEW);
+    if (role) member.roles.add(role);
 
     const welcomeChannel = member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.WELCOME);
-    if (welcomeChannel) {
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor('#FFD700')
-            .setTitle('🌌 ¡Bienvenido a DevVerse Studios! 🎮🚀')
-            .setThumbnail(member.user.displayAvatarURL())
-            .setDescription(`¡Hola ${member}! Bienvenido al centro de creación más grande.\n\n` +
-                `🔹 **Paso 1:** Lee las <#${member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.RULES)?.id}>\n` +
-                `🔹 **Paso 2:** Elige tus intereses en <#${member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.ROLES_SELECT)?.id}>\n` +
-                `🔹 **Paso 3:** ¡Crea algo increíble con nosotros!`)
-            .setImage('https://i.imgur.com/your-dev-banner.png') // Puedes poner un banner aquí
-            .setFooter({ text: `Eres el miembro número ${member.guild.memberCount}` });
+    const rulesChannel = member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.RULES);
+    const rolesChannel = member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.ROLES);
+    const generalChannel = member.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.GENERAL);
 
-        welcomeChannel.send({ content: `¡Miren quién llegó! 👋`, embeds: [welcomeEmbed] });
-    }
+    const embed = new EmbedBuilder()
+    .setColor('#5865F2')
+    .setTitle('🌌 ¡Bienvenido a DevVerse Studios! 🚀')
+    .setThumbnail(member.user.displayAvatarURL())
+    .setDescription(`
+👋 Hola ${member}
+
+📜 Lee las reglas → ${rulesChannel}
+🎭 Escoge roles → ${rolesChannel}
+💬 Preséntate → ${generalChannel}
+
+🔥 ¡Crea juegos, aprende y crece!
+`)
+    .setFooter({ text: `Miembro #${member.guild.memberCount}` });
+
+    welcomeChannel.send({ embeds: [embed] });
 });
 
-// 2. LOGS DE MENSAJES ELIMINADOS
-client.on('messageDelete', async (message) => {
-    if (message.author.bot) return;
-    const logChannel = message.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.MOD_LOGS);
-    if (logChannel) {
-        const logEmbed = new EmbedBuilder()
-            .setColor('#FF4D4D')
-            .setTitle('🚨 Mensaje Eliminado')
-            .addFields(
-                { name: 'Autor:', value: `${message.author.tag}`, inline: true },
-                { name: 'Canal:', value: `${message.channel}`, inline: true },
-                { name: 'Contenido:', value: message.content || 'Sin texto (posible imagen)' }
-            )
-            .setTimestamp();
-        logChannel.send({ embeds: [logEmbed] });
-    }
-});
 
-// 3. COMANDOS DE MODERACIÓN (Ban y Kick)
+// =========================
+// 🛡️ VERIFICACIÓN
+// =========================
 client.on('messageCreate', async (message) => {
-    if (!message.content.startsWith('!') || message.author.bot) return;
-    const args = message.content.slice(1).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
 
-    // BAN
-    if (command === 'ban') {
-        if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) return;
-        const target = message.mentions.members.first();
-        if (!target) return message.reply('Menciona a alguien para banear.');
-        await target.ban({ reason: args.slice(1).join(' ') || 'Sin razón especificada' });
-        message.reply(`✅ ${target.user.tag} ha sido baneado.`);
-    }
-
-    // SETUP ROLES CON EMOJIS (Panel)
-    if (command === 'setup-roles' && message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        const roleChannel = message.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.ROLES_SELECT);
+    if (message.content === '!verify') {
         const embed = new EmbedBuilder()
-            .setTitle('🎭 Selección de Roles')
-            .setDescription('Reacciona para obtener tu rol:\n\n🔔 - Notificaciones\n🎮 - Desarrollador\n🎥 - TikTok Team')
-            .setColor('#5865F2');
-
-        const msg = await roleChannel.send({ embeds: [embed] });
-        await msg.react('🔔');
-        await msg.react('🎮');
-        await msg.react('🎥');
-    }
-
-    // SETUP TICKETS
-    if (command === 'setup-tickets' && message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        const ticketChan = message.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.TICKET_CREATE);
-        const embed = new EmbedBuilder()
-            .setTitle('🎫 Soporte Técnico DevVerse')
-            .setDescription('Si tienes un problema, haz clic abajo.\n\n**Requisitos:**\n- Nombre de usuario\n- Captura del problema\n- Descripción detallada')
-            .setColor('#2ECC71');
+        .setTitle('✅ Verificación')
+        .setDescription('Haz click para acceder al servidor');
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('open_ticket').setLabel('Abrir Ticket').setStyle(ButtonStyle.Success).setEmoji('📩')
+            new ButtonBuilder()
+            .setCustomId('verify')
+            .setLabel('Verificarme')
+            .setStyle(ButtonStyle.Success)
         );
 
-        await ticketChan.send({ embeds: [embed], components: [row] });
+        message.channel.send({ embeds: [embed], components: [row] });
     }
 });
 
-// 4. SISTEMA DE TICKETS (Avanzado)
+
+// =========================
+// 🎭 ROLES PANEL
+// =========================
+client.on('messageCreate', async (message) => {
+
+    if (message.content === '!roles') {
+        const embed = new EmbedBuilder()
+        .setTitle('🎭 Selecciona tus roles')
+        .setDescription(`
+🎮 Desarrollador
+🎨 Diseñador UI
+🧠 Scripter
+🎥 Creador
+📱 TikTok
+🔔 Notificaciones
+`);
+
+        const msg = await message.channel.send({ embeds: [embed] });
+
+        await msg.react('🎮');
+        await msg.react('🎨');
+        await msg.react('🧠');
+        await msg.react('🎥');
+        await msg.react('📱');
+        await msg.react('🔔');
+    }
+});
+
+
+// =========================
+// 🎫 SETUP TICKETS
+// =========================
+client.on('messageCreate', async (message) => {
+
+    if (message.content === '!tickets') {
+        const embed = new EmbedBuilder()
+        .setTitle('🎫 Soporte DevVerse')
+        .setDescription('Selecciona una opción');
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket_support').setLabel('Soporte').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('ticket_bug').setLabel('Bug').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('ticket_buy').setLabel('Compras').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('ticket_report').setLabel('Reporte').setStyle(ButtonStyle.Secondary)
+        );
+
+        message.channel.send({ embeds: [embed], components: [row] });
+    }
+});
+
+
+// =========================
+// 🎯 INTERACCIONES
+// =========================
 client.on('interactionCreate', async (interaction) => {
+
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === 'open_ticket') {
-        const ticketName = `ticket-${interaction.user.username}`;
-        const category = interaction.guild.channels.cache.find(c => c.name === CONFIG.CATEGORY_TICKETS && c.type === ChannelType.GuildCategory);
+    // VERIFICACIÓN
+    if (interaction.customId === 'verify') {
+        const role = interaction.guild.roles.cache.find(r => r.name === CONFIG.ROLES.VERIFIED);
+        if (role) interaction.member.roles.add(role);
+
+        return interaction.reply({ content: '✅ Verificado!', ephemeral: true });
+    }
+
+    // TICKETS
+    if (interaction.customId.startsWith('ticket_')) {
+
+        let type = interaction.customId.split('_')[1];
+
+        const category = interaction.guild.channels.cache.find(c => c.name === CONFIG.CATEGORY_TICKETS);
 
         const channel = await interaction.guild.channels.create({
-            name: ticketName,
+            name: `${type}-${interaction.user.username}`,
             type: ChannelType.GuildText,
-            parent: category ? category.id : null,
+            parent: category?.id,
             permissionOverwrites: [
                 { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] },
-                { id: CONFIG.ROLES.STAFF_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+                { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+                { id: CONFIG.ROLES.STAFF, allow: [PermissionFlagsBits.ViewChannel] }
             ]
         });
 
-        const closeRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('close_ticket').setLabel('Cerrar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+        const embed = new EmbedBuilder()
+        .setTitle(`🎫 Ticket ${type}`)
+        .setDescription('Describe tu problema');
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+            .setCustomId('close_ticket')
+            .setLabel('Cerrar')
+            .setStyle(ButtonStyle.Danger)
         );
 
-        await channel.send({ 
-            content: `👋 Hola ${interaction.user}, el Staff te atenderá pronto.`,
-            embeds: [new EmbedBuilder().setTitle('Detalla tu problema').setDescription('Por favor, escribe tu nombre de usuario y lo que sucede.')],
-            components: [closeRow]
-        });
+        channel.send({ content: `${interaction.user}`, embeds: [embed], components: [row] });
 
-        await interaction.reply({ content: `✅ Ticket creado en ${channel}`, ephemeral: true });
+        interaction.reply({ content: `Ticket creado: ${channel}`, ephemeral: true });
     }
 
+    // CERRAR
     if (interaction.customId === 'close_ticket') {
-        // Solo staff puede cerrar
         if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-            return interaction.reply({ content: 'Solo el Staff puede cerrar el ticket.', ephemeral: true });
+            return interaction.reply({ content: 'Solo staff', ephemeral: true });
         }
 
-        const logChannel = interaction.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.TICKET_LOGS);
-        if (logChannel) {
-            logChannel.send(`📁 Ticket **${interaction.channel.name}** cerrado por **${interaction.user.tag}**`);
-        }
-
-        await interaction.reply('Cerrando canal en 5 segundos...');
-        setTimeout(() => interaction.channel.delete(), 5000);
+        interaction.reply('Cerrando...');
+        setTimeout(() => interaction.channel.delete(), 3000);
     }
 });
 
-// 5. ASIGNACIÓN DE ROLES POR REACCIÓN
+
+// =========================
+// 🚨 REPORTES
+// =========================
+client.on('messageCreate', (message) => {
+
+    if (message.content.startsWith('!report')) {
+
+        const user = message.mentions.users.first();
+        const reason = message.content.split(' ').slice(2).join(' ');
+
+        const channel = message.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.REPORTS);
+
+        const embed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('🚨 Reporte')
+        .addFields(
+            { name: 'Usuario', value: `${user}` },
+            { name: 'Razón', value: reason }
+        );
+
+        channel.send({ embeds: [embed] });
+    }
+});
+
+
+// =========================
+// 🔨 MODERACIÓN
+// =========================
+client.on('messageCreate', async (message) => {
+
+    if (!message.content.startsWith('!')) return;
+
+    const args = message.content.split(' ');
+
+    if (args[0] === '!ban') {
+        if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) return;
+
+        const user = message.mentions.members.first();
+        await user.ban();
+
+        message.reply('Usuario baneado');
+    }
+
+    if (args[0] === '!kick') {
+        if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) return;
+
+        const user = message.mentions.members.first();
+        await user.kick();
+
+        message.reply('Usuario expulsado');
+    }
+});
+
+
+// =========================
+// 📊 STATS AUTOMÁTICOS
+// =========================
+setInterval(() => {
+    const guild = client.guilds.cache.first();
+    const channel = guild.channels.cache.find(c => c.name.includes('Miembros'));
+
+    if (channel) {
+        channel.setName(`👥 Miembros: ${guild.memberCount}`);
+    }
+}, 600000);
+
+
+// =========================
+// 🎭 ROLES REACCIÓN
+// =========================
 client.on('messageReactionAdd', async (reaction, user) => {
+
     if (user.bot) return;
-    if (reaction.partial) await reaction.fetch();
-    
-    const { name } = reaction.emoji;
+
     const member = reaction.message.guild.members.cache.get(user.id);
-    
-    let roleName = '';
-    if (name === '🔔') roleName = '🔔 Notificaciones';
-    if (name === '🎮') roleName = '🎮 Desarrollador';
-    if (name === '🎥') roleName = '🎥 TikTok Team';
+    const emoji = reaction.emoji.name;
+
+    const roles = {
+        '🎮': '🎮 Desarrollador',
+        '🎨': '🎨 Diseñador UI',
+        '🧠': '🧠 Scripter',
+        '🎥': '🎥 Creador de Contenido',
+        '📱': '📱 TikTok Team',
+        '🔔': '🔔 Notificaciones'
+    };
+
+    const roleName = roles[emoji];
+    if (!roleName) return;
 
     const role = reaction.message.guild.roles.cache.find(r => r.name === roleName);
-    if (role) await member.roles.add(role);
+    if (role) member.roles.add(role);
 });
+
+
+// =========================
+// 🚨 LOGS MENSAJES BORRADOS
+// =========================
+client.on('messageDelete', (message) => {
+
+    const channel = message.guild.channels.cache.find(c => c.name === CONFIG.CHANNELS.LOGS);
+
+    const embed = new EmbedBuilder()
+    .setColor('#FF0000')
+    .setTitle('Mensaje eliminado')
+    .setDescription(message.content || 'Sin texto');
+
+    channel.send({ embeds: [embed] });
+});
+
 
 client.login(process.env.TOKEN);
